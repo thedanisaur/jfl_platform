@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"jfl_platform/types"
-	"jfl_platform/util"
+	"user_service/types"
+	"user_service/util"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt"
@@ -33,13 +33,6 @@ func GenerateJWT(txid uuid.UUID, user_id uuid.UUID, config types.Config) (string
 		return "", err
 	}
 
-<<<<<<< Updated upstream
-	// Store JTW
-	db.StoreJWT(claims, config)
-	log.Printf("token | %s\n", signed_token)
-
-=======
->>>>>>> Stashed changes
 	return signed_token, nil
 }
 
@@ -67,7 +60,7 @@ func GetBasicAuth(auth string, config types.Config) (string, string, bool, error
 			}
 		}
 	}
-	return "", "", false, errors.New("Invalid header")
+	return "", "", false, errors.New("invalid header")
 }
 
 func parseToken(token string) (jwt.MapClaims, error) {
@@ -75,18 +68,18 @@ func parseToken(token string) (jwt.MapClaims, error) {
 	parsed_token, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
 		_, ok := t.Method.(*jwt.SigningMethodHMAC)
 		if !ok {
-			return "", errors.New("Invalid signing method")
+			return "", errors.New("invalid signing method")
 		}
 		return SIGNING_KEY, nil
 	})
 	if err != nil || !parsed_token.Valid {
-		log.Printf(err.Error())
-		return nil, errors.New("Invalid JWT")
+		log.Println(err.Error())
+		return nil, errors.New("invalid jwt")
 	}
 
 	claims, ok := parsed_token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("Missing Claims")
+		return nil, errors.New("missing claims")
 	}
 	return claims, nil
 }
