@@ -23,8 +23,7 @@ func GenerateJWT(txid uuid.UUID, user_id uuid.UUID, config types.Config) (string
 	claims := token.Claims.(jwt.MapClaims)
 	claims["iat"] = time.Now().UTC().Unix()
 	claims["exp"] = time.Now().Add(time.Duration(config.App.LoginExpirationMs) * time.Millisecond).UTC().Unix()
-	// TODO [drd] update this to be auth.jfl.com (or whatever the url ends up being) and jti will take over the txid functionality
-	claims["iss"] = txid
+	claims["iss"] = config.App.Host.Issuer
 	claims["jti"] = txid
 	// TODO tie to user agent as well
 	claims["user_id"] = user_id.String()
@@ -101,10 +100,10 @@ func ValidateJWT(c *fiber.Ctx, config types.Config) (jwt.MapClaims, error) {
 			return nil, errors.New("token expired or not set")
 		}
 		if !passed_claims.VerifyIssuedAt(time.Now().UTC().Unix(), true) {
-			return nil, errors.New("issued_at not set")
+			return nil, errors.New("issued_at not set or invalid")
 		}
 		if !passed_claims.VerifyIssuer(config.App.Host.Issuer, true) {
-			return nil, errors.New("issuer not set")
+			return nil, errors.New("issuer not set or invalid")
 		}
 		return passed_claims, nil
 	}
