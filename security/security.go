@@ -1,42 +1,37 @@
 package security
 
 import (
+	"crypto/rsa"
 	"encoding/base64"
 	"errors"
+	"os"
 
 	"log"
 	"strings"
 	"time"
 
 	"github.com/thedanisaur/jfl_platform/types"
-	"github.com/thedanisaur/jfl_platform/util"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 )
 
-var SIGNING_KEY []byte
-
-func GenerateJWT(txid uuid.UUID, user_id uuid.UUID, config types.Config) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS512)
+func GenerateJWT(txid uuid.UUID, user_id uuid.UUID, config types.Config, private_key *rsa.PrivateKey) (string, error) {
+	token := jwt.New(jwt.SigningMethodRS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["iat"] = time.Now().UTC().Unix()
 	claims["exp"] = time.Now().Add(time.Duration(config.App.LoginExpirationMs) * time.Millisecond).UTC().Unix()
 	claims["iss"] = config.App.Host.Issuer
-	claims["jti"] = txid
+	claims["jti"] = txid.String()
 	// TODO tie to user agent as well
 	claims["user_id"] = user_id.String()
-	signed_token, err := token.SignedString(SIGNING_KEY)
+	signed_token, err := token.SignedString(private_key)
 	if err != nil {
 		return "", err
 	}
 
 	return signed_token, nil
-}
-
-func GenerateSigningKey() {
-	SIGNING_KEY = []byte(util.RandomString(64))
 }
 
 func GetBasicAuth(auth string, config types.Config) (string, string, bool, error) {
@@ -62,14 +57,38 @@ func GetBasicAuth(auth string, config types.Config) (string, string, bool, error
 	return "", "", false, errors.New("invalid header")
 }
 
-func parseToken(token string) (jwt.MapClaims, error) {
+func LoadPrivateKey(path string) (*rsa.PrivateKey, error) {
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(bytes)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+func LoadPublicKey(path string) (*rsa.PublicKey, error) {
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	key, err := jwt.ParseRSAPublicKeyFromPEM(bytes)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+func parseToken(token string, public_key *rsa.PublicKey) (jwt.MapClaims, error) {
 	token = strings.TrimPrefix(token, "Bearer ")
 	parsed_token, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
-		_, ok := t.Method.(*jwt.SigningMethodHMAC)
+		_, ok := t.Method.(*jwt.SigningMethodRSA)
 		if !ok {
-			return "", errors.New("invalid signing method")
+			return nil, errors.New("invalid signing method")
 		}
-		return SIGNING_KEY, nil
+		return public_key, nil
 	})
 	if err != nil || !parsed_token.Valid {
 		log.Println(err.Error())
@@ -83,10 +102,10 @@ func parseToken(token string) (jwt.MapClaims, error) {
 	return claims, nil
 }
 
-func ValidateJWT(c *fiber.Ctx, config types.Config) (jwt.MapClaims, error) {
+func ValidateJWT(c *fiber.Ctx, config types.Config, public_key *rsa.PublicKey) (jwt.MapClaims, error) {
 	token := c.Get(fiber.HeaderAuthorization)
 	if strings.HasPrefix(token, "Bearer ") {
-		passed_claims, err := parseToken(token)
+		passed_claims, err := parseToken(token, public_key)
 		if err != nil {
 			return nil, errors.New("failed to parse current token")
 		}

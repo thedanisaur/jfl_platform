@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"log"
 
@@ -12,12 +13,12 @@ import (
 	"github.com/google/uuid"
 )
 
-func AuthorizationMiddleware(config types.Config) fiber.Handler {
+func AuthorizationMiddleware(config types.Config, public_key *rsa.PublicKey) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		txid := uuid.New()
 		log.Printf("%s | %s\n", util.GetFunctionName(AuthorizationMiddleware), txid.String())
 
-		claims, err := security.ValidateJWT(c, config)
+		claims, err := security.ValidateJWT(c, config, public_key)
 		if err != nil {
 			log.Printf("Failed to Validate JWT\n%s\n", err.Error())
 			err_string := fmt.Sprintf("Unauthorized: %s\n", txid.String())
