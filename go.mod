@@ -1,4 +1,4 @@
-module jfl_platform
+module github.com/thedanisaur/jfl_platform
 
 go 1.19
 
