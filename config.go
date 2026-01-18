@@ -2,8 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"jfl_platform/types"
 	"os"
+
+	"github.com/thedanisaur/jfl_platform/types"
 )
 
 func loadConfig(config_path string) (types.Config, error) {

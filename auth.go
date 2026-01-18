@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"jfl_platform/security"
-	"jfl_platform/types"
-	"jfl_platform/util"
 	"log"
+
+	"github.com/thedanisaur/jfl_platform/security"
+	"github.com/thedanisaur/jfl_platform/types"
+	"github.com/thedanisaur/jfl_platform/util"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"

@@ -5,15 +5,12 @@ go 1.21.0
 toolchain go1.24.4
 
 require (
-	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gofiber/fiber/v2 v2.42.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
-	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -29,3 +26,5 @@ require (
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 )
+
+replace github.com/thedanisaur/jfl_platform => ../jfl_platform

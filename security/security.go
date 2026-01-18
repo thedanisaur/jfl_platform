@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"user_service/types"
-	"user_service/util"
+	"github.com/thedanisaur/jfl_platform/types"
+	"github.com/thedanisaur/jfl_platform/util"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt"
