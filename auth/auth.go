@@ -26,6 +26,7 @@ func AuthorizationMiddleware(config types.Config, public_key *rsa.PublicKey) fib
 		}
 		user_id := claims["user_id"].(uuid.UUID)
 		c.Locals("user_id", user_id)
+		c.Locals("transaction_id", txid)
 		return c.Next()
 	}
 }
