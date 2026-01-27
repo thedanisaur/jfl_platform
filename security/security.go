@@ -17,15 +17,16 @@ import (
 	"github.com/google/uuid"
 )
 
-func GenerateJWT(txid uuid.UUID, user_id uuid.UUID, config types.Config, private_key *rsa.PrivateKey) (string, error) {
+func GenerateJWT(txid uuid.UUID, user_id uuid.UUID, unit_id uuid.UUID, role_name string, config types.Config, private_key *rsa.PrivateKey) (string, error) {
 	token := jwt.New(jwt.SigningMethodRS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["iat"] = time.Now().UTC().Unix()
 	claims["exp"] = time.Now().Add(time.Duration(config.App.LoginExpirationMs) * time.Millisecond).UTC().Unix()
 	claims["iss"] = config.App.Host.Issuer
 	claims["jti"] = txid.String()
-	// TODO tie to user agent as well
 	claims["user_id"] = user_id.String()
+	claims["unit_id"] = unit_id.String()
+	claims["role_name"] = role_name
 	signed_token, err := token.SignedString(private_key)
 	if err != nil {
 		return "", err

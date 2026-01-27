@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type AircrewDTO struct {
+type FlightLogAircrewDTO struct {
 	ID                          uuid.UUID  `json:"id"`
 	FlightLogID                 uuid.UUID  `json:"flight_log_id"`
 	UserID                      uuid.UUID  `json:"user_id"`
@@ -32,41 +32,43 @@ type AircrewDTO struct {
 	UpdatedOn                   *time.Time `json:"updated_on"`
 }
 
-type CommentDTO struct {
-	ID          uuid.UUID `json:"id,omitempty"`
-	FlightLogID uuid.UUID `json:"flight_log_id,omitempty"`
-	UserID      uuid.UUID `json:"user_id"`
-	RoleID      uuid.UUID `json:"role_id"`
-	Comment     string    `json:"comment"`
+type FlightLogCommentDTO struct {
+	ID          uuid.UUID  `json:"id,omitempty"`
+	FlightLogID uuid.UUID  `json:"flight_log_id,omitempty"`
+	UserID      uuid.UUID  `json:"user_id"`
+	RoleID      uuid.UUID  `json:"role_id"`
+	Comment     string     `json:"comment"`
+	CreatedOn   *time.Time `json:"created_on"`
+	UpdatedOn   *time.Time `json:"updated_on"`
 }
 
 type FlightLogDTO struct {
-	ID                         uuid.UUID    `json:"id"`
-	UserID                     uuid.UUID    `json:"user_id"`
-	UnitID                     uuid.UUID    `json:"unit_id"`
-	MDS                        string       `json:"mds"`
-	FlightLogDate              *time.Time   `json:"flight_log_date"`
-	SerialNumber               string       `json:"serial_number"`
-	UnitCharged                string       `json:"unit_charged"`
-	HarmLocation               string       `json:"harm_location"`
-	FlightAuthorization        string       `json:"flight_authorization"`
-	IssuingUnit                string       `json:"issuing_unit"`
-	IsTrainingFlight           bool         `json:"is_training_flight"`
-	IsTrainingOnly             bool         `json:"is_training_only"`
-	TotalFlightDecimalTime     float64      `json:"total_flight_decimal_time,omitempty"`
-	SchedulerSignatureID       *uuid.UUID   `json:"scheduler_signature_id,omitempty"`
-	SarmSignatureID            *uuid.UUID   `json:"sarm_signature_id,omitempty"`
-	InstructorSignatureID      *uuid.UUID   `json:"instructor_signature_id,omitempty"`
-	StudentSignatureID         *uuid.UUID   `json:"student_signature_id,omitempty"`
-	TrainingOfficerSignatureID *uuid.UUID   `json:"training_officer_signature_id,omitempty"`
-	Type                       string       `json:"type,omitempty"`
-	Remarks                    string       `json:"remarks,omitempty"`
-	Missions                   []MissionDTO `json:"missions,omitempty"`
-	Aircrew                    []AircrewDTO `json:"aircrew,omitempty"`
-	Comments                   []CommentDTO `json:"comments,omitempty"`
+	ID                         uuid.UUID             `json:"id"`
+	UserID                     uuid.UUID             `json:"user_id"`
+	UnitID                     uuid.UUID             `json:"unit_id"`
+	MDS                        string                `json:"mds"`
+	FlightLogDate              *time.Time            `json:"flight_log_date"`
+	SerialNumber               string                `json:"serial_number"`
+	UnitCharged                string                `json:"unit_charged"`
+	HarmLocation               string                `json:"harm_location"`
+	FlightAuthorization        string                `json:"flight_authorization"`
+	IssuingUnit                string                `json:"issuing_unit"`
+	IsTrainingFlight           bool                  `json:"is_training_flight"`
+	IsTrainingOnly             bool                  `json:"is_training_only"`
+	TotalFlightDecimalTime     float64               `json:"total_flight_decimal_time,omitempty"`
+	SchedulerSignatureID       *uuid.UUID            `json:"scheduler_signature_id,omitempty"`
+	SarmSignatureID            *uuid.UUID            `json:"sarm_signature_id,omitempty"`
+	InstructorSignatureID      *uuid.UUID            `json:"instructor_signature_id,omitempty"`
+	StudentSignatureID         *uuid.UUID            `json:"student_signature_id,omitempty"`
+	TrainingOfficerSignatureID *uuid.UUID            `json:"training_officer_signature_id,omitempty"`
+	Type                       string                `json:"type,omitempty"`
+	Remarks                    string                `json:"remarks,omitempty"`
+	Missions                   []FlightLogMissionDTO `json:"missions,omitempty"`
+	Aircrew                    []FlightLogAircrewDTO `json:"aircrew,omitempty"`
+	Comments                   []FlightLogCommentDTO `json:"comments,omitempty"`
 }
 
-type MissionDTO struct {
+type FlightLogMissionDTO struct {
 	ID               uuid.UUID  `json:"id"`
 	FlightLogID      uuid.UUID  `json:"flight_log_id"`
 	MissionNumber    string     `json:"mission_number,omitempty"`
