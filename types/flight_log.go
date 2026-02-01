@@ -36,7 +36,7 @@ type FlightLogCommentDTO struct {
 	ID          uuid.UUID  `json:"id,omitempty"`
 	FlightLogID uuid.UUID  `json:"flight_log_id,omitempty"`
 	UserID      uuid.UUID  `json:"user_id"`
-	RoleID      uuid.UUID  `json:"role_id"`
+	RoleName    string     `json:"role_name"`
 	Comment     string     `json:"comment"`
 	CreatedOn   *time.Time `json:"created_on"`
 	UpdatedOn   *time.Time `json:"updated_on"`
@@ -45,7 +45,6 @@ type FlightLogCommentDTO struct {
 type FlightLogDTO struct {
 	ID                         uuid.UUID             `json:"id"`
 	UserID                     uuid.UUID             `json:"user_id"`
-	UnitID                     uuid.UUID             `json:"unit_id"`
 	MDS                        string                `json:"mds"`
 	FlightLogDate              *time.Time            `json:"flight_log_date"`
 	SerialNumber               string                `json:"serial_number"`
