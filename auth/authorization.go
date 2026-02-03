@@ -14,10 +14,12 @@ import (
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
-func compileCelToSQL(expr string, table_name string, request_user types.UserClaims) (string, []interface{}, error) {
+func compileCelToSQL(expr string, scope map[string]string, request_user types.UserClaims) (string, []interface{}, error) {
 	// Parse CEL expression into AST
+	// TODO [drd] pull this out of here as the env will need to be built in each app
 	env, err := cel.NewEnv(
-		cel.Variable("record", cel.MapType(cel.StringType, cel.DynType)),
+		cel.Variable("log", cel.MapType(cel.StringType, cel.DynType)),
+		cel.Variable("aircrew", cel.ListType(cel.MapType(cel.StringType, cel.DynType))),
 		cel.Variable("request_user", cel.MapType(cel.StringType, cel.DynType)),
 	)
 	if err != nil {
@@ -37,10 +39,10 @@ func compileCelToSQL(expr string, table_name string, request_user types.UserClai
 	}
 
 	// Convert AST to SQL
-	return compileExpression(checked_expression.GetExpr(), table_name, request_user)
+	return compileExpression(checked_expression.GetExpr(), scope, request_user)
 }
 
-func compileExpression(expression *exprpb.Expr, table_name string, request_user types.UserClaims) (string, []interface{}, error) {
+func compileExpression(expression *exprpb.Expr, scope map[string]string, request_user types.UserClaims) (string, []interface{}, error) {
 	switch expression_kind := expression.ExprKind.(type) {
 
 	// boolean constants
@@ -89,7 +91,11 @@ func compileExpression(expression *exprpb.Expr, table_name string, request_user 
 		}
 
 		switch ident.IdentExpr.Name {
-		case "record":
+		case "log", "aircrew":
+			table_name, ok := scope[ident.IdentExpr.Name]
+			if !ok {
+				return "", nil, fmt.Errorf("unknown table alias: %s", ident.IdentExpr.Name)
+			}
 			return fmt.Sprintf("%s.%s", table_name, expression_kind.SelectExpr.Field), nil, nil
 
 		case "request_user":
@@ -118,12 +124,12 @@ func compileExpression(expression *exprpb.Expr, table_name string, request_user 
 			return "", nil, errors.New("only binary operators are supported")
 		}
 
-		left_sql, left_args, err := compileExpression(expression_kind.CallExpr.Args[0], table_name, request_user)
+		left_sql, left_args, err := compileExpression(expression_kind.CallExpr.Args[0], scope, request_user)
 		if err != nil {
 			return "", nil, err
 		}
 
-		right_sql, right_args, err := compileExpression(expression_kind.CallExpr.Args[1], table_name, request_user)
+		right_sql, right_args, err := compileExpression(expression_kind.CallExpr.Args[1], scope, request_user)
 		if err != nil {
 			return "", nil, err
 		}
@@ -166,12 +172,59 @@ func compileExpression(expression *exprpb.Expr, table_name string, request_user 
 		}
 
 		return fmt.Sprintf("(%s %s %s)", left_sql, sql_operation, right_sql), append(left_args, right_args...), nil
+
+	// Exists operation
+	case *exprpb.Expr_ComprehensionExpr:
+		comp := expression_kind.ComprehensionExpr
+
+		// Detect `exists`, exists() always uses:
+		// accu_init = false
+		// loop_step = accu || predicate
+		if _, ok := comp.AccuInit.ExprKind.(*exprpb.Expr_ConstExpr); !ok {
+			return "", nil, errors.New("unsupported comprehension: non-boolean accumulator")
+		}
+
+		iter_ident, ok := comp.IterRange.ExprKind.(*exprpb.Expr_IdentExpr)
+		if !ok {
+			return "", nil, errors.New("exists() must iterate over a table alias identifier")
+		}
+
+		table_name, ok := scope[iter_ident.IdentExpr.Name]
+		if !ok {
+			return "", nil, fmt.Errorf("unknown table alias in exists(): %s", iter_ident.IdentExpr.Name)
+		}
+
+		// Extract predicate from: accu || predicate
+		call, ok := comp.LoopStep.ExprKind.(*exprpb.Expr_CallExpr)
+		if !ok || call.CallExpr.Function != "_||_" {
+			return "", nil, errors.New("unsupported comprehension form (expected OR in loop step)")
+		}
+
+		predicate_expr := call.CallExpr.Args[1]
+
+		// Compile predicate
+		predicate_sql, predicate_args, err := compileExpression(predicate_expr, scope, request_user)
+		if err != nil {
+			return "", nil, err
+		}
+
+		sql := fmt.Sprintf(
+			`EXISTS (
+			SELECT 1
+			FROM %s
+			WHERE %s
+		)`,
+			table_name,
+			predicate_sql,
+		)
+
+		return sql, predicate_args, nil
 	}
 
 	return "", nil, errors.New("unsupported expression type")
 }
 
-func EvaluateRead(txid uuid.UUID, resource string, operation string, table_name string, request_user types.UserClaims, policies []types.PermissionDTO) (string, []interface{}, error) {
+func EvaluateRead(txid uuid.UUID, resource string, operation string, scope map[string]string, request_user types.UserClaims, policies []types.PermissionDTO) (string, []interface{}, error) {
 	log.Printf("%s | %s\n", txid.String(), util.GetFunctionName(EvaluateRead))
 
 	for _, policy := range policies {
@@ -187,7 +240,7 @@ func EvaluateRead(txid uuid.UUID, resource string, operation string, table_name 
 
 	for _, policy := range policies {
 		// compile CEL -> SQL filter (we'll implement this next)
-		sql, p, err := compileCelToSQL(policy.ConditionExpression, table_name, request_user)
+		sql, p, err := compileCelToSQL(policy.ConditionExpression, scope, request_user)
 		if err != nil {
 			log.Printf("%s\n", err.Error())
 			return "", nil, err
