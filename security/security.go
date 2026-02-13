@@ -130,25 +130,25 @@ func parseToken(token string, public_key *rsa.PublicKey) (jwt.MapClaims, error) 
 
 func ValidateJWT(txid uuid.UUID, c *fiber.Ctx, config types.Config, public_key *rsa.PublicKey) (types.UserClaims, error) {
 	token := c.Get(fiber.HeaderAuthorization)
-	if strings.HasPrefix(token, "Bearer ") {
-		passed_claims, err := parseToken(token, public_key)
-		if err != nil {
-			return types.UserClaims{}, errors.New("failed to parse current token")
-		}
-		// Make sure the token is valid
-		if !passed_claims.VerifyExpiresAt(time.Now().UTC().Unix(), true) {
-			return types.UserClaims{}, errors.New("token expired or not set")
-		}
-		if !passed_claims.VerifyIssuedAt(time.Now().UTC().Unix(), true) {
-			return types.UserClaims{}, errors.New("issued_at not set or invalid")
-		}
-		if !passed_claims.VerifyIssuer(config.App.Host.Issuer, true) {
-			return types.UserClaims{}, errors.New("issuer not set or invalid")
-		}
-
-		// Make sure the user is valid
-		user_claims, err := mapToUserClaims(txid, passed_claims)
-		return user_claims, err
+	if !strings.HasPrefix(token, "Bearer ") {
+		return types.UserClaims{}, errors.New("invalid credentials")
 	}
-	return types.UserClaims{}, errors.New("invalid credentials")
+	passed_claims, err := parseToken(token, public_key)
+	if err != nil {
+		return types.UserClaims{}, errors.New("failed to parse current token")
+	}
+	// Make sure the token is valid
+	if !passed_claims.VerifyExpiresAt(time.Now().UTC().Unix(), true) {
+		return types.UserClaims{}, errors.New("token expired or not set")
+	}
+	if !passed_claims.VerifyIssuedAt(time.Now().UTC().Unix(), true) {
+		return types.UserClaims{}, errors.New("issued_at not set or invalid")
+	}
+	if !passed_claims.VerifyIssuer(config.App.Host.Issuer, true) {
+		return types.UserClaims{}, errors.New("issuer not set or invalid")
+	}
+
+	// Make sure the user is valid
+	user_claims, err := mapToUserClaims(txid, passed_claims)
+	return user_claims, err
 }

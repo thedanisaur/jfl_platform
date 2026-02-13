@@ -29,6 +29,7 @@ func AuthenticationMiddleware(config types.Config, public_key *rsa.PublicKey) fi
 			err_string := fmt.Sprintf("Unauthorized: %s\n", txid.String())
 			return c.Status(fiber.StatusInternalServerError).SendString(err_string)
 		}
+		log.Printf("User claims: %v", user_claims)
 		c.Locals("user_claims", user_claims)
 		c.Locals("transaction_id", txid)
 		return c.Next()

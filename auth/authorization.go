@@ -112,6 +112,10 @@ func compileExpression(expression *exprpb.Expr, scope map[string]string, request
 				return "?", slice, nil
 			}
 
+			if uuid, ok := val.(uuid.UUID); ok {
+				return "UUID_TO_BIN(?)", []interface{}{uuid}, nil
+			}
+
 			return "?", []interface{}{val}, nil
 
 		default:

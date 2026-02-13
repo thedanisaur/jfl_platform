@@ -54,7 +54,7 @@ type FlightLogDTO struct {
 	IssuingUnit                string                `json:"issuing_unit"`
 	IsTrainingFlight           bool                  `json:"is_training_flight"`
 	IsTrainingOnly             bool                  `json:"is_training_only"`
-	TotalFlightDecimalTime     float64               `json:"total_flight_decimal_time,omitempty"`
+	TotalFlightDecimalTime     float64               `json:"total_flight_decimal_time"`
 	SchedulerSignatureID       *uuid.UUID            `json:"scheduler_signature_id,omitempty"`
 	SarmSignatureID            *uuid.UUID            `json:"sarm_signature_id,omitempty"`
 	InstructorSignatureID      *uuid.UUID            `json:"instructor_signature_id,omitempty"`
@@ -76,12 +76,17 @@ type FlightLogMissionDTO struct {
 	MissionTo        string     `json:"mission_to"`
 	TakeoffTime      *time.Time `json:"takeoff_time,omitempty"`
 	LandTime         *time.Time `json:"land_time,omitempty"`
-	TotalTimeDecimal float64    `json:"total_time_decimal,omitempty"`
+	TotalTimeDecimal float64    `json:"total_time_decimal"`
 	TotalTimeDisplay string     `json:"total_time_display,omitempty"`
-	TouchAndGos      int64      `json:"touch_and_gos,omitempty"`
-	FullStops        int64      `json:"full_stops,omitempty"`
-	TotalLandings    int64      `json:"total_landings,omitempty"`
-	Sorties          int64      `json:"sorties,omitempty"`
+	TouchAndGos      int64      `json:"touch_and_gos"`
+	FullStops        int64      `json:"full_stops"`
+	TotalLandings    int64      `json:"total_landings"`
+	Sorties          int64      `json:"sorties"`
 	CreatedOn        *time.Time `json:"created_on"`
 	UpdatedOn        *time.Time `json:"updated_on"`
+}
+
+type TemplateFlightLogDTO struct {
+	FlightLogDTO
+	Name string `json:"name"`
 }
