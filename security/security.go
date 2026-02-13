@@ -17,16 +17,16 @@ import (
 	"github.com/google/uuid"
 )
 
-func GenerateJWT(txid uuid.UUID, user_id uuid.UUID, unit_id uuid.UUID, role_name string, config types.Config, private_key *rsa.PrivateKey) (string, error) {
+func GenerateJWT(txid uuid.UUID, user_claims types.UserClaims, config types.Config, private_key *rsa.PrivateKey) (string, error) {
 	token := jwt.New(jwt.SigningMethodRS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["iat"] = time.Now().UTC().Unix()
 	claims["exp"] = time.Now().Add(time.Duration(config.App.LoginExpirationMs) * time.Millisecond).UTC().Unix()
 	claims["iss"] = config.App.Host.Issuer
 	claims["jti"] = txid.String()
-	claims["user_id"] = user_id.String()
-	claims["unit_id"] = unit_id.String()
-	claims["role_name"] = role_name
+	claims["user_id"] = user_claims.UserID.String()
+	claims["issuing_unit"] = user_claims.IssuingUnit
+	claims["role_name"] = user_claims.RoleName
 	signed_token, err := token.SignedString(private_key)
 	if err != nil {
 		return "", err
@@ -82,6 +82,31 @@ func LoadPublicKey(path string) (*rsa.PublicKey, error) {
 	return key, nil
 }
 
+func mapToUserClaims(txid uuid.UUID, claims map[string]interface{}) (types.UserClaims, error) {
+	user_claims := types.UserClaims{}
+
+	user_id, err := uuid.Parse(claims["user_id"].(string))
+	if err != nil {
+		log.Printf("%s | missing user id\n", txid.String())
+		return user_claims, errors.New("invalid user claims")
+	}
+	user_claims.UserID = user_id
+	issuing_unit, ok := claims["issuing_unit"].(string)
+	if !ok {
+		log.Printf("%s | missing issuing unit\n", txid.String())
+		return user_claims, errors.New("invalid user claims")
+	}
+	user_claims.IssuingUnit = issuing_unit
+	role_name, ok := claims["role_name"].(string)
+	if !ok {
+		log.Printf("%s | missing role name\n", txid.String())
+		return user_claims, errors.New("invalid user claims")
+	}
+	user_claims.RoleName = role_name
+
+	return user_claims, nil
+}
+
 func parseToken(token string, public_key *rsa.PublicKey) (jwt.MapClaims, error) {
 	token = strings.TrimPrefix(token, "Bearer ")
 	parsed_token, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
@@ -103,29 +128,27 @@ func parseToken(token string, public_key *rsa.PublicKey) (jwt.MapClaims, error) 
 	return claims, nil
 }
 
-func ValidateJWT(c *fiber.Ctx, config types.Config, public_key *rsa.PublicKey) (jwt.MapClaims, error) {
+func ValidateJWT(txid uuid.UUID, c *fiber.Ctx, config types.Config, public_key *rsa.PublicKey) (types.UserClaims, error) {
 	token := c.Get(fiber.HeaderAuthorization)
-	if strings.HasPrefix(token, "Bearer ") {
-		passed_claims, err := parseToken(token, public_key)
-		if err != nil {
-			return nil, errors.New("failed to parse current token")
-		}
-		passed_claims["user_id"], err = uuid.Parse(passed_claims["user_id"].(string))
-		if err != nil {
-			return nil, errors.New("invalid user")
-		}
-
-		// Make sure the token is valid
-		if !passed_claims.VerifyExpiresAt(time.Now().UTC().Unix(), true) {
-			return nil, errors.New("token expired or not set")
-		}
-		if !passed_claims.VerifyIssuedAt(time.Now().UTC().Unix(), true) {
-			return nil, errors.New("issued_at not set or invalid")
-		}
-		if !passed_claims.VerifyIssuer(config.App.Host.Issuer, true) {
-			return nil, errors.New("issuer not set or invalid")
-		}
-		return passed_claims, nil
+	if !strings.HasPrefix(token, "Bearer ") {
+		return types.UserClaims{}, errors.New("invalid credentials")
 	}
-	return nil, errors.New("invalid credentials")
+	passed_claims, err := parseToken(token, public_key)
+	if err != nil {
+		return types.UserClaims{}, errors.New("failed to parse current token")
+	}
+	// Make sure the token is valid
+	if !passed_claims.VerifyExpiresAt(time.Now().UTC().Unix(), true) {
+		return types.UserClaims{}, errors.New("token expired or not set")
+	}
+	if !passed_claims.VerifyIssuedAt(time.Now().UTC().Unix(), true) {
+		return types.UserClaims{}, errors.New("issued_at not set or invalid")
+	}
+	if !passed_claims.VerifyIssuer(config.App.Host.Issuer, true) {
+		return types.UserClaims{}, errors.New("issuer not set or invalid")
+	}
+
+	// Make sure the user is valid
+	user_claims, err := mapToUserClaims(txid, passed_claims)
+	return user_claims, err
 }

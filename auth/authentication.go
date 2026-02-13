@@ -23,18 +23,14 @@ func AuthenticationMiddleware(config types.Config, public_key *rsa.PublicKey) fi
 			log.Printf("%s | method: %s | path: %s | name: %s", txid.String(), route.Method, route.Path, route.Name)
 		}
 
-		claims, err := security.ValidateJWT(c, config, public_key)
+		user_claims, err := security.ValidateJWT(txid, c, config, public_key)
 		if err != nil {
 			log.Printf("%s | Failed to Validate JWT\n", txid.String())
 			err_string := fmt.Sprintf("Unauthorized: %s\n", txid.String())
 			return c.Status(fiber.StatusInternalServerError).SendString(err_string)
 		}
-		user_id := claims["user_id"].(uuid.UUID)
-		unit_id := claims["unit_id"].(string)
-		role_name := claims["role_name"].(string)
-		c.Locals("user_id", user_id)
-		c.Locals("unit_id", unit_id)
-		c.Locals("role_name", role_name)
+		log.Printf("User claims: %v", user_claims)
+		c.Locals("user_claims", user_claims)
 		c.Locals("transaction_id", txid)
 		return c.Next()
 	}
